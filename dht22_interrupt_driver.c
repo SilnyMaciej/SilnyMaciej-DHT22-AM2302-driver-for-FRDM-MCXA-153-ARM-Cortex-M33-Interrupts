@@ -88,12 +88,29 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 		return 0;
 	}
 
-	if(!measures_ready) return 1234;
+	if(!measures_ready){
+		if((CTIMER0->TC - trigger_start_time) >= 20000U){
+			is_measuring = false;
+			trigger_did = false;
+			trigger_delay = false;
+			response_start_time = 0;
+			trigger_start_time = 0;
+			handshake_step = 0;
+			bits_itter = 0;
+
+			for(uint8_t i = 0; i < 5; i++) {
+				bit_tab[i] = 0;
+			}
+
+			return CHECK_SUM_ERROR;
+		}
+		return 1234;
+	}
+
 	else{
 
 		measures_ready = false;
 		trigger_did = false;
-
 		is_measuring = false;
 		response_start_time = 0;
 		trigger_start_time = 0;
