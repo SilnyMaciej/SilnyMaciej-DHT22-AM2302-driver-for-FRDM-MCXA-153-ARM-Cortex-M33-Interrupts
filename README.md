@@ -69,42 +69,45 @@ int main(void) {
     uint32_t last_measurement_time = 0;
     const uint32_t measurement_interval = MEASUREMENT_INTERVAL_TICKS;
 
+    uint32_t delay_led_start = 0;
+    bool led_on = false;
+
     PRINTF("--- Asynchronous DHT22 System Active ---\r\n");
 
     while (1) {
         /* Non-blocking 2-second interval scheduler */
         if (CTIMER0->TC - last_measurement_time >= measurement_interval) {
-            
+
             uint32_t raw_data = DHT22_Get_Temperature_And_RH();
 
             /* Check if the driver is still processing/waiting for the device */
             if (raw_data != 0 && raw_data != 1234) {
-                
+
                 if (raw_data == CHECK_SUM_ERROR) {
                     PRINTF("[ERROR] Checksum mismatch!\r\n");
                 } else {
                     // Extract byte structures
                     uint16_t raw_humidity = (uint16_t)((raw_data >> 16) & 0xFFFF);
                     uint16_t raw_temperature = (uint16_t)(raw_data & 0xFFFF);
-                    
-                    // Pure Integer Calculations (No Float)
-                    uint32_t hum_integral = raw_humidity / 10;
-                    uint32_t hum_fractional = raw_humidity % 10;
 
-                    int32_t temp_integral = 0;
-                    int32_t temp_fractional = 0;
+                    // Pure Integer Calculations (No Float)
+                    uint8_t hum_integral = raw_humidity / 10;
+                    uint8_t hum_fractional = raw_humidity % 10;
+
+                    int8_t temp_integral = 0;
+                    int8_t temp_fractional = 0;
 
                     if (raw_temperature & 0x8000) {
                         uint16_t absolute_temp = raw_temperature & 0x7FFF;
-                        temp_integral = -(int32_t)(absolute_temp / 10);
-                        temp_fractional = (int32_t)(absolute_temp % 10);
+                        temp_integral = -(int8_t)(absolute_temp / 10);
+                        temp_fractional = (int8_t)(absolute_temp % 10);
                     } else {
-                        temp_integral = (int32_t)(raw_temperature / 10);
-                        temp_fractional = (int32_t)(raw_temperature % 10);
+                        temp_integral = (int8_t)(raw_temperature / 10);
+                        temp_fractional = (int8_t)(raw_temperature % 10);
                     }
 
-                    PRINTF("RH: %u.%u%% | Temp: %d.%d st.C\r\n", 
-                           hum_integral, hum_fractional, temp_integral, temp_fractional);
+                    PRINTF("RH: %u.%u%% | Temp: %d.%d st.C\r\n",
+                           (uint8_t)hum_integral, (uint8_t)hum_fractional, (int8_t)temp_integral, (int8_t)temp_fractional);
                 }
 
                 /* Execution complete: update timer to start the next 2s window */
@@ -112,8 +115,12 @@ int main(void) {
             }
         }
 
-        /* Background Application Code Executes Here Instantly */
-        // user_background_tasks();
+
+        if(CTIMER0->TC - delay_led_start >= 250000U){
+        	led_on = !led_on;
+        	GPIO_PinWrite(BOARD_LED_INITPINS_LED_GPIO, BOARD_LED_INITPINS_LED_GPIO_PIN, led_on);
+        	delay_led_start = CTIMER0->TC;
+        }
     }
     return 0;
 }
