@@ -114,7 +114,7 @@ int main(void) {
                 last_measurement_time = CTIMER0->TC;
             }
         }
-
+/* Background Application Code Executes Here Instantly */
 
         if(CTIMER0->TC - delay_led_start >= 250000U){
         	led_on = !led_on;
