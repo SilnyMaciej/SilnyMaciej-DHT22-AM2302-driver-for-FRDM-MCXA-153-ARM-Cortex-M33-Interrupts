@@ -47,9 +47,12 @@ void INT_0_IRQHANDLER(void){
 				++bits_itter;
 
 				if(bits_itter == 40){
+					is_measuring = false;
 					measures_ready = true;
-					bits_itter = 0;
+					response_start_time = 0;
+					trigger_start_time = 0;
 					handshake_step = 0;
+					bits_itter = 0;
 				}
 			}
 		}
@@ -91,27 +94,21 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 
 	if(!measures_ready) return 1234;
 	else{
+
+		measures_ready = false;
+		trigger_did = false;
+
 		is_measuring = false;
+		response_start_time = 0;
+		trigger_start_time = 0;
+		handshake_step = 0;
+		bits_itter = 0;
 
 		uint32_t results = 0;
 
 		if((uint8_t)(*bit_tab + *(bit_tab + 1) + *(bit_tab + 2) + *(bit_tab + 3)) == *(bit_tab + 4)) {
 			results = ((uint32_t)(*(bit_tab)) << 24) | ((uint32_t)(*(bit_tab + 1)) << 16) | ((uint32_t)(*(bit_tab + 2)) << 8) | ((uint32_t)(*(bit_tab + 3)));
 		} else results = CHECK_SUM_ERROR;
-
-		measures_ready = false;
-
-		trigger_did = false;
-
-		trigger_delay = false;
-
-		response_start_time = 0;
-
-		trigger_start_time = 0;
-
-		handshake_step = 0;
-
-		bits_itter = 0;
 
 		for(uint8_t i = 0; i < 5; i++) {
 			bit_tab[i] = 0;
