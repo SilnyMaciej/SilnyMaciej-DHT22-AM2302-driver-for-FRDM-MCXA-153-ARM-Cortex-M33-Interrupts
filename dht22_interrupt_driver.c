@@ -1,12 +1,9 @@
 #include <dht22_interrupt_driver.h>
 #include "pin_mux.h"
 
-
-
 static volatile bool measures_ready = false;
 
 static bool trigger_did = false;
-
 
 static bool trigger_delay = false;
 
@@ -56,6 +53,17 @@ void INT_0_IRQHANDLER(void){
 
 }
 
+static inline void DHT22_Reset_Flags(void){
+	measures_ready = false;
+	is_measuring = false;
+	trigger_did = false;
+	trigger_delay = false;
+	response_start_time = 0;
+	trigger_start_time = 0;
+	handshake_step = 0;
+	bits_itter = 0;
+}
+
 
 static void DHT22_Do_Trigger(void){
 	if(!trigger_delay){
@@ -90,13 +98,8 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 
 	if(!measures_ready){
 		if((CTIMER0->TC - trigger_start_time) >= 20000U){
-			is_measuring = false;
-			trigger_did = false;
-			trigger_delay = false;
-			response_start_time = 0;
-			trigger_start_time = 0;
-			handshake_step = 0;
-			bits_itter = 0;
+
+			DHT22_Reset_Flags();
 
 			for(uint8_t i = 0; i < 5; i++) {
 				bit_tab[i] = 0;
@@ -109,13 +112,7 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 
 	else{
 
-		measures_ready = false;
-		trigger_did = false;
-		is_measuring = false;
-		response_start_time = 0;
-		trigger_start_time = 0;
-		handshake_step = 0;
-		bits_itter = 0;
+		DHT22_Reset_Flags();
 
 		uint32_t results = 0;
 
