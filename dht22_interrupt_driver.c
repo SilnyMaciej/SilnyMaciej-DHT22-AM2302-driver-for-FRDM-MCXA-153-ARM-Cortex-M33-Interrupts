@@ -49,10 +49,6 @@ void INT_0_IRQHANDLER(void){
 				if(bits_itter == 40){
 					is_measuring = false;
 					measures_ready = true;
-					response_start_time = 0;
-					trigger_start_time = 0;
-					handshake_step = 0;
-					bits_itter = 0;
 				}
 			}
 		}
