@@ -20,6 +20,7 @@ static volatile uint8_t handshake_step = 0;
 
 static volatile uint8_t bit_tab[5] = {0};
 
+static const uint8_t BIT_MAP_TAB[8] = {0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 
 void INT_0_IRQHANDLER(void){
 	if(GPIO_PinGetInterruptFlag(DHT22_GPIO, DHT22_PIN)){
@@ -35,7 +36,7 @@ void INT_0_IRQHANDLER(void){
 				response_start_time = CTIMER0->TC;
 			} else{
 				if((CTIMER0->TC - response_start_time) > 30U){
-					 *(bit_tab + (bits_itter >> 3)) |= (1U << (7 - (bits_itter & 7)));
+					 *(bit_tab + (bits_itter >> 3)) |= *(BIT_MAP_TAB + (bits_itter & 7));
 				}
 
 				++bits_itter;
