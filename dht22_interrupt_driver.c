@@ -25,7 +25,7 @@ void INT_0_IRQHANDLER(void){
 	if(GPIO_PinGetInterruptFlag(DHT22_GPIO, DHT22_PIN)){
 		GPIO_PinClearInterruptFlag(DHT22_GPIO, DHT22_PIN);
 
-		if(!measures_ready && is_measuring){
+		if(is_measuring && !measures_ready){
 			if(handshake_step < 3){
 				++handshake_step;
 				return;
@@ -98,9 +98,7 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 
 			DHT22_Reset_Flags();
 
-			for(uint8_t i = 0; i < 5; i++) {
-				bit_tab[i] = 0;
-			}
+			bit_tab[0] = 0; bit_tab[1] = 0; bit_tab[2] = 0; bit_tab[3] = 0; bit_tab[4] = 0;
 
 			return CHECK_SUM_ERROR;
 		}
@@ -117,9 +115,7 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 			results = ((uint32_t)(*(bit_tab)) << 24) | ((uint32_t)(*(bit_tab + 1)) << 16) | ((uint32_t)(*(bit_tab + 2)) << 8) | ((uint32_t)(*(bit_tab + 3)));
 		} else results = CHECK_SUM_ERROR;
 
-		for(uint8_t i = 0; i < 5; i++) {
-			bit_tab[i] = 0;
-		}
+		bit_tab[0] = 0; bit_tab[1] = 0; bit_tab[2] = 0; bit_tab[3] = 0; bit_tab[4] = 0;
 
 		return results;
 	}
