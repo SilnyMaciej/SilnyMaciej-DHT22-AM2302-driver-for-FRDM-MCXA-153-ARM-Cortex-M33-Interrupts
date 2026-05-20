@@ -1,6 +1,7 @@
 #include <dht22_interrupt_driver.h>
 #include "pin_mux.h"
 
+
 static volatile bool measures_ready = false;
 
 static bool trigger_did = false;
@@ -24,11 +25,7 @@ void INT_0_IRQHANDLER(void){
 	if(GPIO_PinGetInterruptFlag(DHT22_GPIO, DHT22_PIN)){
 		GPIO_PinClearInterruptFlag(DHT22_GPIO, DHT22_PIN);
 
-		if (!is_measuring) {
-			return;
-		}
-
-		if(!measures_ready){
+		if(!measures_ready && is_measuring){
 			if(handshake_step < 3){
 				++handshake_step;
 				return;
@@ -110,7 +107,7 @@ uint32_t DHT22_Get_Temperature_And_RH(void){
 		return 1234;
 	}
 
-	else{
+	else {
 
 		DHT22_Reset_Flags();
 
