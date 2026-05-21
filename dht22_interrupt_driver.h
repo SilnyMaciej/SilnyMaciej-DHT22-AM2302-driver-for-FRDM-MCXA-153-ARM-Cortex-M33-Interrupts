@@ -12,8 +12,8 @@
 #include "board.h"
 #include "delay_us.h"
 
-#define DHT22_1_GPIO 					BOARD_DHT22_INITPINS_dht22_GPIO
-#define DHT22_1_PIN					    BOARD_DHT22_INITPINS_dht22_GPIO_PIN
+#define DHT22_1_GPIO 					BOARD_INITDHT22PINS_dht22_GPIO
+#define DHT22_1_PIN					    BOARD_INITDHT22PINS_dht22_GPIO_PIN
 
 
 typedef struct{
@@ -42,15 +42,15 @@ typedef struct{
 
 
 typedef enum{
-	GND_ERROR = 112,
-	VCC_ERROR = 445,
-	CHECK_SUM_ERROR = 554
+	GND_ERROR = -1,
+	VCC_ERROR = -2,
+	CHECK_SUM_ERROR = -3
 }g_Sensor_Check_t;
 
 
 uint32_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22);
 void DHT22_Interrupt(DHT22_Sensor* dht22);
 void DHT22_Set_Structure(DHT22_Sensor* dht22, GPIO_Type* base, uint8_t pin);
-void DHT22_Process_And_Print_Sensor_Data(uint32_t raw_data, const char* sensor_name);
+uint64_t DHT22_Process_Sensor_Data(uint32_t raw_data, const char* sensor_name);
 
 #endif /* DHT22_INTERRUPT_DRIVER_H_ */
