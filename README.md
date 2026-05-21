@@ -28,13 +28,13 @@ The primary advantage of this architecture is the complete elimination of CPU bl
 static DHT22_Sensor dht22_1;
 static DHT22_Sensor dht22_2;
 
+// 2. Initialize structures. WARNING STRUCTURES MUST BE INITIALIZED  BOARD_InitBootPeripherals() !!!!!!!!
+    DHT22_Set_Structure(&dht22_1, DHT22_1_GPIO, DHT22_1_PIN);
+    DHT22_Set_Structure(&dht22_2, DHT22_2_GPIO, DHT22_2_PIN);
+
 int main(void) {
     // Hardware initialization (clocks, pins, etc.)
     // ...
-
-    // 2. Initialize structures
-    DHT22_Set_Structure(&dht22_1, DHT22_1_GPIO, DHT22_1_PIN);
-    DHT22_Set_Structure(&dht22_2, DHT22_2_GPIO, DHT22_2_PIN);
 
     uint32_t last_measurement_time_1 = 0;
     uint32_t last_measurement_time_2 = 0;
