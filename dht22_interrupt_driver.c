@@ -8,32 +8,26 @@ static const uint8_t BIT_MAP_TAB[8] = {0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
 
 
 void DHT22_Interrupt(DHT22_Sensor* dht22){
-	if(GPIO_PinGetInterruptFlag(dht22->base, dht22->pin)){
-		GPIO_PinClearInterruptFlag(dht22->base, dht22->pin);
+	GPIO_PinClearInterruptFlag(dht22->base, dht22->pin);
 
-		if(dht22->is_measuring && !dht22->measures_ready){
-			if(dht22->handshake_step < 3){
-				++dht22->handshake_step;
-				return;
+	if(dht22->is_measuring && !dht22->measures_ready){
+		if(dht22->handshake_step < 3){
+			++dht22->handshake_step;
+			return;
+		}
+		if(dht22->base->PDIR & (1U << dht22->pin)){
+			dht22->response_start_time = CTIMER0->TC;
+		} else{
+			if((CTIMER0->TC - dht22->response_start_time) > 30U){
+				*(dht22->bit_tab + (dht22->bits_itter >> 3)) |= *(BIT_MAP_TAB + (dht22->bits_itter & 7));
 			}
-
-			if(dht22->base->PDIR & (1U << dht22->pin)){
-				dht22->response_start_time = CTIMER0->TC;
-			} else{
-				if((CTIMER0->TC - dht22->response_start_time) > 30U){
-					 *(dht22->bit_tab + (dht22->bits_itter >> 3)) |= *(BIT_MAP_TAB + (dht22->bits_itter & 7));
-				}
-
-				++dht22->bits_itter;
-
-				if(dht22->bits_itter == 40){
-					dht22->is_measuring = false;
-					dht22->measures_ready = true;
-				}
+			++dht22->bits_itter;
+			if(dht22->bits_itter == 40){
+				dht22->is_measuring = false;
+				dht22->measures_ready = true;
 			}
 		}
 	}
-
 }
 
 static inline void DHT22_Reset_Flags(DHT22_Sensor* dht22){
@@ -122,29 +116,28 @@ void DHT22_Set_Structure(DHT22_Sensor* dht22, GPIO_Type* base, uint8_t pin){
 
 
 
-void DHT22_Process_And_Print_Sensor_Data(uint32_t raw_data, const char* sensor_name) {
+uint64_t DHT22_Process_Sensor_Data(uint32_t raw_data, const char* sensor_name) {
     if (raw_data == CHECK_SUM_ERROR) {
-        PRINTF("[%s] ERROR: Checksum mismatch!\r\n", sensor_name);
-        return;
+
+        return CHECK_SUM_ERROR;
     }
 
     uint16_t raw_humidity = (uint16_t)((raw_data >> 16) & 0xFFFF);
     uint16_t raw_temperature = (uint16_t)(raw_data & 0xFFFF);
 
-    uint8_t hum_integral = raw_humidity / 10;
-    uint8_t hum_fractional = raw_humidity % 10;
-
-    int8_t temp_integral = 0;
-    int8_t temp_fractional = 0;
+    int16_t temp_signed;
 
     if (raw_temperature & 0x8000) {
-        uint16_t absolute_temp = raw_temperature & 0x7FFF;
-        temp_integral = -(int8_t)(absolute_temp / 10);
-        temp_fractional = (int8_t)(absolute_temp % 10);
+    	temp_signed = -(int16_t)(raw_temperature & 0x7FFF);
     } else {
-        temp_integral = (int8_t)(raw_temperature / 10);
-        temp_fractional = (int8_t)(raw_temperature % 10);
+    	temp_signed = (int16_t)raw_temperature;
     }
 
-    PRINTF("[%s] RH: %u.%u%% | Temp: %d.%d st.C\r\n",sensor_name, hum_integral, hum_fractional, temp_integral, temp_fractional);
+    uint64_t packed_data = 0;
+
+     packed_data |= ((uint64_t)(uint32_t)temp_signed) << 32;
+     packed_data |= (uint64_t)raw_humidity;
+
+     return packed_data;
+
 }
