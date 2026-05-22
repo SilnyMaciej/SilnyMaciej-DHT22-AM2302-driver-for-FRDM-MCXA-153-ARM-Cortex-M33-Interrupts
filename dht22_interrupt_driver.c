@@ -138,7 +138,6 @@ g_Sensor_DHT22_Check_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22){
 		if((uint8_t)(*dht22->bit_tab + *(dht22->bit_tab + 1) + *(dht22->bit_tab + 2) + *(dht22->bit_tab + 3)) == *(dht22->bit_tab + 4)) {
 			raw_data = ((uint32_t)(*(dht22->bit_tab)) << 24) | ((uint32_t)(*(dht22->bit_tab + 1)) << 16) | ((uint32_t)(*(dht22->bit_tab + 2)) << 8) | ((uint32_t)(*(dht22->bit_tab + 3)));
 		} else {
-			raw_data = DHT22_CHECK_SUM_ERROR;
 			dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
 			return DHT22_CHECK_SUM_ERROR;
 		}
