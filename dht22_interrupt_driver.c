@@ -1,7 +1,8 @@
-#include <dht22_interrupt_driver.h>
+#include "dht22_interrupt_driver.h"
 #include "pin_mux.h"
 #include <string.h>
 #include "fsl_debug_console.h"
+#include <stdlib.h>
 
 
 static const uint8_t BIT_MAP_TAB[8] = {0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
@@ -15,13 +16,21 @@ void DHT22_Interrupt(DHT22_Sensor* dht22){
 			++dht22->handshake_step;
 			return;
 		}
-		if(dht22->base->PDIR & (1U << dht22->pin)){
+
+		if(!dht22->falling_edge){
 			dht22->response_start_time = CTIMER0->TC;
+
+			dht22->falling_edge = true;
+
 		} else{
+
 			if((CTIMER0->TC - dht22->response_start_time) > 30U){
 				*(dht22->bit_tab + (dht22->bits_itter >> 3)) |= *(BIT_MAP_TAB + (dht22->bits_itter & 7));
 			}
 			++dht22->bits_itter;
+
+			dht22->falling_edge = false;
+
 			if(dht22->bits_itter == 40){
 				dht22->is_measuring = false;
 				dht22->measures_ready = true;
@@ -31,6 +40,7 @@ void DHT22_Interrupt(DHT22_Sensor* dht22){
 }
 
 static inline void DHT22_Reset_Flags(DHT22_Sensor* dht22){
+
 	dht22->measures_ready = false;
 	dht22->is_measuring = false;
 	dht22->trigger_did = false;
@@ -69,43 +79,6 @@ static void DHT22_Do_Trigger(DHT22_Sensor* dht22){
 
 
 
-
-uint32_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22){
-	if(!dht22->trigger_did){
-		DHT22_Do_Trigger(dht22);
-		return 0;
-	}
-
-	if(!dht22->measures_ready){
-		if((CTIMER0->TC - dht22->trigger_start_time) >= 20000U){
-
-			DHT22_Reset_Flags(dht22);
-
-			dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
-
-			return CHECK_SUM_ERROR;
-		}
-		return 1234;
-	}
-
-	else {
-
-		DHT22_Reset_Flags(dht22);
-
-		uint32_t results = 0;
-
-		if((uint8_t)(*dht22->bit_tab + *(dht22->bit_tab + 1) + *(dht22->bit_tab + 2) + *(dht22->bit_tab + 3)) == *(dht22->bit_tab + 4)) {
-			results = ((uint32_t)(*(dht22->bit_tab)) << 24) | ((uint32_t)(*(dht22->bit_tab + 1)) << 16) | ((uint32_t)(*(dht22->bit_tab + 2)) << 8) | ((uint32_t)(*(dht22->bit_tab + 3)));
-		} else results = CHECK_SUM_ERROR;
-
-		dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
-
-		return results;
-	}
-}
-
-
-
 void DHT22_Set_Structure(DHT22_Sensor* dht22, GPIO_Type* base, uint8_t pin){
 	memset(dht22, 0, sizeof(DHT22_Sensor));
 
@@ -116,14 +89,14 @@ void DHT22_Set_Structure(DHT22_Sensor* dht22, GPIO_Type* base, uint8_t pin){
 
 
 
-uint64_t DHT22_Process_Sensor_Data(uint32_t raw_data, const char* sensor_name) {
-    if (raw_data == CHECK_SUM_ERROR) {
+static void DHT22_Process_Sensor_Data(DHT22_Sensor* dht22,uint32_t* raw_data) {
 
-        return CHECK_SUM_ERROR;
-    }
+    uint16_t raw_humidity = (uint16_t)((*raw_data >> 16) & 0xFFFF);
+    uint16_t raw_temperature = (uint16_t)(*raw_data & 0xFFFF);
 
-    uint16_t raw_humidity = (uint16_t)((raw_data >> 16) & 0xFFFF);
-    uint16_t raw_temperature = (uint16_t)(raw_data & 0xFFFF);
+
+    dht22->rh_integral = raw_humidity / 10;
+    dht22->rh_decimal = raw_humidity % 10;
 
     int16_t temp_signed;
 
@@ -133,11 +106,47 @@ uint64_t DHT22_Process_Sensor_Data(uint32_t raw_data, const char* sensor_name) {
     	temp_signed = (int16_t)raw_temperature;
     }
 
-    uint64_t packed_data = 0;
+    dht22->temp_integral = temp_signed / 10;
+    dht22->temp_decimal = abs(temp_signed) % 10;
 
-     packed_data |= ((uint64_t)(uint32_t)temp_signed) << 32;
-     packed_data |= (uint64_t)raw_humidity;
+}
 
-     return packed_data;
+g_Sensor_DHT22_Check_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22){
+	if(!dht22->trigger_did){
+		DHT22_Do_Trigger(dht22);
+		return DHT22_DATA_NOT_READY;
+	}
 
+	if(!dht22->measures_ready){
+		if((CTIMER0->TC - dht22->trigger_start_time) >= 20000U){
+
+			DHT22_Reset_Flags(dht22);
+
+			dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
+
+			return DHT22_CHECK_SUM_ERROR;
+		}
+		return DHT22_DATA_NOT_READY;
+	}
+
+	else {
+
+		DHT22_Reset_Flags(dht22);
+
+		uint32_t raw_data = 0;
+
+		if((uint8_t)(*dht22->bit_tab + *(dht22->bit_tab + 1) + *(dht22->bit_tab + 2) + *(dht22->bit_tab + 3)) == *(dht22->bit_tab + 4)) {
+			raw_data = ((uint32_t)(*(dht22->bit_tab)) << 24) | ((uint32_t)(*(dht22->bit_tab + 1)) << 16) | ((uint32_t)(*(dht22->bit_tab + 2)) << 8) | ((uint32_t)(*(dht22->bit_tab + 3)));
+		} else {
+			raw_data = DHT22_CHECK_SUM_ERROR;
+			dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
+			return DHT22_CHECK_SUM_ERROR;
+		}
+
+		dht22->bit_tab[0] = 0; dht22->bit_tab[1] = 0; dht22->bit_tab[2] = 0; dht22->bit_tab[3] = 0; dht22->bit_tab[4] = 0;
+
+		DHT22_Process_Sensor_Data(dht22,&raw_data);
+
+		return DHT22_DATA_READY;
+	}
 }
