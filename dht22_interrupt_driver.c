@@ -100,12 +100,8 @@ static void DHT22_Process_Sensor_Data(DHT22_Sensor* dht22,uint32_t* raw_data) {
 
     int16_t temp_signed;
 
-    if (raw_temperature & 0x8000) {
-    	temp_signed = -(int16_t)(raw_temperature & 0x7FFF);
-    } else {
-    	temp_signed = (int16_t)raw_temperature;
-    }
-
+	temp_signed = raw_temperature & 0x8000 ? -(int16_t)(raw_temperature & 0x7FFF) : (int16_t)raw_temperature;
+	
     dht22->temp_integral = temp_signed / 10;
     dht22->temp_decimal = abs(temp_signed) % 10;
 
