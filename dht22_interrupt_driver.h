@@ -22,11 +22,21 @@ typedef struct{
 
 	volatile bool measures_ready;
 
+	uint8_t temp_integral;
+
+	uint8_t temp_decimal;
+
+	uint8_t rh_integral;
+
+	uint8_t rh_decimal;
+
 	bool trigger_did;
 
 	bool trigger_delay;
 
 	volatile bool is_measuring;
+
+	volatile bool falling_edge;
 
 	volatile uint32_t response_start_time;
 
@@ -42,15 +52,15 @@ typedef struct{
 
 
 typedef enum{
-	GND_ERROR = -1,
-	VCC_ERROR = -2,
-	CHECK_SUM_ERROR = -3
-}g_Sensor_Check_t;
+	DHT22_DATA_NOT_READY = 666,
+	DHT22_DATA_READY = 555,
+	DHT22_GND_ERROR = 333,
+	DHT22_VCC_ERROR = 444,
+	DHT22_CHECK_SUM_ERROR = 777
+}g_Sensor_DHT22_Check_t;
 
 
-uint32_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22);
+g_Sensor_DHT22_Check_t DHT22_Get_Temperature_And_RH(DHT22_Sensor* dht22);
 void DHT22_Interrupt(DHT22_Sensor* dht22);
 void DHT22_Set_Structure(DHT22_Sensor* dht22, GPIO_Type* base, uint8_t pin);
-uint64_t DHT22_Process_Sensor_Data(uint32_t raw_data, const char* sensor_name);
-
 #endif /* DHT22_INTERRUPT_DRIVER_H_ */
